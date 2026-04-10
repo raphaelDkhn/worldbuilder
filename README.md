@@ -4,7 +4,7 @@
 
 You are in the Squiggle. You've left (or want to leave) your job. You don't know what to build yet. You're reading, journaling, talking to friends, getting nowhere fast. The question isn't *"how do I ship this"* — it's *"what do I want to spend the next five to ten years of my life on?"*
 
-`worldbuilder` is a collection of thirteen Claude Code skills that operationalize South Park Commons' [-1 to 0 thesis](https://blog.southparkcommons.com/p/what-is-negative-1-to-0).
+`worldbuilder` is a collection of Skills that operationalize South Park Commons' [-1 to 0 thesis](https://blog.southparkcommons.com/p/what-is-negative-1-to-0).
 Inspired structurally by Garry Tan's [gstack](https://github.com/garrytan/gstack), but oriented around the pre-founder phase instead of the shipping phase.
 
 Every skill pushes you toward the things -1 to 0 founders avoid: **shipping artifacts into the world, talking to external humans, and killing your favorite ideas.**
@@ -20,7 +20,7 @@ cd ~/worldbuilder && ./setup
 at `~/.worldbuilder/`. Open Claude Code in any project and type `/worldbuilder` to get
 started. Or describe your situation in plain English — worldbuilder routes automatically.
 
-## The thirteen skills
+## The Skills
 
 ### Foundation — where do you start?
 
