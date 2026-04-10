@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# wb-napkin-math — $1B venture-scale validation math.
+#
+# Two modes:
+#   top-down   — ADDRESSABLE_CUSTOMERS × SHARE × ARPU
+#   bottom-up  — CUSTOMERS × ACV
+#
+# Exit 0 if math passes the $1B revenue threshold, non-zero otherwise.
+# Used as an integrated HARD GATE in /north-star and a secondary check in /kill-darlings
+# and /hypothesis.
+
+set -euo pipefail
+
+TARGET=1000000000   # $1B in dollars
+
+compare() {
+    local rev="$1" label="$2"
+    awk -v r="$rev" -v t="$TARGET" -v l="$label" '
+        BEGIN {
+            if (r + 0 < t + 0) {
+                printf "%s revenue: $%.0f\n", l, r
+                print "FAIL: below $1B threshold."
+                exit 1
+            } else {
+                printf "%s revenue: $%.0f\n", l, r
+                print "PASS: at or above $1B threshold."
+                exit 0
+            }
+        }
+    '
+}
+
+case "${1:-help}" in
+    top-down)
+        if [[ $# -lt 4 ]]; then
+            printf 'Usage: wb-napkin-math top-down ADDRESSABLE_CUSTOMERS SHARE ARPU\n' >&2
+            exit 2
+        fi
+        TAM="$2"; SHARE="$3"; ARPU="$4"
+        REV=$(awk -v t="$TAM" -v s="$SHARE" -v a="$ARPU" 'BEGIN { printf "%.0f", t * s * a }')
+        printf 'Top-down: %s addressable customers × %s share × $%s ARPU\n' "$TAM" "$SHARE" "$ARPU"
+        compare "$REV" "Top-down"
+        ;;
+    bottom-up)
+        if [[ $# -lt 3 ]]; then
+            printf 'Usage: wb-napkin-math bottom-up CUSTOMERS ACV\n' >&2
+            exit 2
+        fi
+        CUSTOMERS="$2"; ACV="$3"
+        REV=$(awk -v c="$CUSTOMERS" -v a="$ACV" 'BEGIN { printf "%.0f", c * a }')
+        printf 'Bottom-up: %s customers × $%s ACV\n' "$CUSTOMERS" "$ACV"
+        compare "$REV" "Bottom-up"
+        ;;
+    log)
+        # Log a napkin calculation to the project state for auditability.
+        BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        SLUG="$("$BIN_DIR/wb-slug")"
+        STATE_DIR="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG/napkin"
+        mkdir -p "$STATE_DIR"
+        TS="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+        FILE="$STATE_DIR/$TS.md"
+        shift
+        {
+            printf '# Napkin math — %s\n\n' "$TS"
+            printf '%s\n' "$*"
+        } > "$FILE"
+        printf 'Logged to: %s\n' "$FILE"
+        ;;
+    help|*)
+        cat <<'EOF'
+wb-napkin-math — $1B venture-scale validation
+
+Usage:
+  wb-napkin-math top-down ADDRESSABLE_CUSTOMERS SHARE ARPU
+      ADDRESSABLE_CUSTOMERS  Total customers in the addressable market
+      SHARE                  Fraction (0.02 = 2%)
+      ARPU                   Annual revenue per customer in dollars
+
+  wb-napkin-math bottom-up CUSTOMERS ACV
+      CUSTOMERS              Target customer count
+      ACV                    Annual contract value in dollars
+
+  wb-napkin-math log FREE_TEXT
+      Log a calculation to the project's napkin/ audit trail.
+
+Exit code 0 = passes $1B; non-zero = fails.
+
+Examples:
+  wb-napkin-math top-down 500000 0.02 100000      # → $1B, PASS
+  wb-napkin-math bottom-up 10000 100000            # → $1B, PASS
+  wb-napkin-math bottom-up 1000 500000             # → $500M, FAIL
+EOF
+        ;;
+esac

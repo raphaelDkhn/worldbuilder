@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# wb-squiggle-read — read recent entries from the current project's squiggle journal.
+#
+# Usage:
+#   wb-squiggle-read [--limit N] [--skill NAME] [--type TYPE]
+#
+# Defaults to the last 20 entries. Filters stack (--skill + --type both apply).
+
+set -euo pipefail
+
+LIMIT=20
+SKILL_FILTER=""
+TYPE_FILTER=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --limit) LIMIT="$2"; shift 2 ;;
+        --skill) SKILL_FILTER="$2"; shift 2 ;;
+        --type)  TYPE_FILTER="$2"; shift 2 ;;
+        *)
+            printf 'wb-squiggle-read: unknown argument: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SLUG="$("$BIN_DIR/wb-slug")"
+FILE="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG/squiggle.jsonl"
+
+if [[ ! -f "$FILE" ]]; then
+    printf 'wb-squiggle-read: no squiggle journal for project "%s" yet.\n' "$SLUG" >&2
+    exit 0
+fi
+
+# Apply filters via grep, then take the last N lines.
+if [[ -n "$SKILL_FILTER" && -n "$TYPE_FILTER" ]]; then
+    grep -F "\"skill\":\"$SKILL_FILTER\"" "$FILE" | grep -F "\"type\":\"$TYPE_FILTER\"" | tail -n "$LIMIT"
+elif [[ -n "$SKILL_FILTER" ]]; then
+    grep -F "\"skill\":\"$SKILL_FILTER\"" "$FILE" | tail -n "$LIMIT"
+elif [[ -n "$TYPE_FILTER" ]]; then
+    grep -F "\"type\":\"$TYPE_FILTER\"" "$FILE" | tail -n "$LIMIT"
+else
+    tail -n "$LIMIT" "$FILE"
+fi

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# wb-conviction-trend — summarize the conviction trajectory for the current project.
+#
+# Reads ~/.worldbuilder/projects/<slug>/conviction.jsonl and prints:
+#   • The last N entries
+#   • First score, last score, and delta (if scores are present)
+#
+# Usage: wb-conviction-trend [LIMIT]  (default 10)
+
+set -euo pipefail
+
+LIMIT="${1:-10}"
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SLUG="$("$BIN_DIR/wb-slug")"
+FILE="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG/conviction.jsonl"
+
+if [[ ! -f "$FILE" ]]; then
+    printf 'No conviction log for project "%s" yet.\n' "$SLUG"
+    exit 0
+fi
+
+printf 'Last %s conviction entries for %s:\n' "$LIMIT" "$SLUG"
+tail -n "$LIMIT" "$FILE"
+
+# Extract numeric scores and compute first → last delta.
+scores="$(tail -n "$LIMIT" "$FILE" | grep -oE '"score":[0-9.]+' | sed 's/"score"://' || true)"
+if [[ -n "$scores" ]]; then
+    first="$(printf '%s\n' "$scores" | head -1)"
+    last="$(printf '%s\n' "$scores" | tail -1)"
+    delta="$(awk -v f="$first" -v l="$last" 'BEGIN { printf "%.2f", l - f }')"
+    printf '\nfirst=%s  last=%s  delta=%s\n' "$first" "$last" "$delta"
+fi

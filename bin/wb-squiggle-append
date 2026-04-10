@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# wb-squiggle-append — append a JSONL entry to the current project's squiggle journal.
+#
+# The squiggle journal is the state backbone of worldbuilder. Every skill writes here.
+# Entries are append-only JSONL at ~/.worldbuilder/projects/<slug>/squiggle.jsonl.
+#
+# Usage:
+#   wb-squiggle-append --skill SKILL --type TYPE [--key KEY] [--insight TEXT] [--confidence 0.6]
+#
+# External-action types (used by wb-last-action for research-trap detection):
+#   demo-shipped, memo-sent, interview-completed, darling-killed
+
+set -euo pipefail
+
+SKILL=""
+TYPE=""
+KEY=""
+INSIGHT=""
+CONFIDENCE=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skill)      SKILL="$2"; shift 2 ;;
+        --type)       TYPE="$2"; shift 2 ;;
+        --key)        KEY="$2"; shift 2 ;;
+        --insight)    INSIGHT="$2"; shift 2 ;;
+        --confidence) CONFIDENCE="$2"; shift 2 ;;
+        *)
+            printf 'wb-squiggle-append: unknown argument: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ -z "$SKILL" || -z "$TYPE" ]]; then
+    printf 'wb-squiggle-append: --skill and --type are required\n' >&2
+    exit 2
+fi
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SLUG="$("$BIN_DIR/wb-slug")"
+STATE_DIR="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG"
+mkdir -p "$STATE_DIR"
+
+TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# Minimal JSON string escaping: backslash and double-quote.
+esc() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+entry="{\"ts\":\"$TS\",\"skill\":\"$(esc "$SKILL")\",\"type\":\"$(esc "$TYPE")\""
+[[ -n "$KEY" ]]        && entry="$entry,\"key\":\"$(esc "$KEY")\""
+[[ -n "$INSIGHT" ]]    && entry="$entry,\"insight\":\"$(esc "$INSIGHT")\""
+[[ -n "$CONFIDENCE" ]] && entry="$entry,\"confidence\":$CONFIDENCE"
+entry="$entry}"
+
+printf '%s\n' "$entry" >> "$STATE_DIR/squiggle.jsonl"
+printf 'squiggle: logged %s/%s\n' "$SKILL" "$TYPE"

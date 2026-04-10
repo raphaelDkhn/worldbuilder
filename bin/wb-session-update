@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# wb-session-update — update session counters on skill invocation.
+# Called by every worldbuilder skill's preamble.
+#
+# Usage: wb-session-update SKILL_NAME
+
+set -euo pipefail
+
+SKILL="${1:?wb-session-update SKILL_NAME}"
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+"$BIN_DIR/wb-profile" increment
+
+SLUG="$("$BIN_DIR/wb-slug")"
+STATE_DIR="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG"
+mkdir -p "$STATE_DIR"
+
+printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SKILL" >> "$STATE_DIR/sessions.log"

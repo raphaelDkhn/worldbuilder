@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# wb-profile — global builder profile: session count, tier, first/last seen.
+#
+# Tiers (driven by session count) borrow gstack's /office-hours progression:
+#   introduction   → first session
+#   welcome_back   → 2-3 sessions
+#   regular        → 4-10 sessions
+#   inner_circle   → 11+ sessions
+#
+# Usage:
+#   wb-profile show                → print current profile
+#   wb-profile increment           → append a session timestamp
+#   wb-profile tier                → print the current tier string
+
+set -euo pipefail
+
+PROFILE_DIR="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}"
+SESSIONS_FILE="$PROFILE_DIR/builder-profile.sessions"
+mkdir -p "$PROFILE_DIR"
+touch "$SESSIONS_FILE"
+
+case "${1:-show}" in
+    increment)
+        date -u +%Y-%m-%dT%H:%M:%SZ >> "$SESSIONS_FILE"
+        ;;
+    show)
+        count="$(wc -l < "$SESSIONS_FILE" 2>/dev/null | tr -d ' ' || printf '0')"
+        first="$(head -1 "$SESSIONS_FILE" 2>/dev/null || printf '')"
+        last="$(tail -1 "$SESSIONS_FILE" 2>/dev/null || printf '')"
+        printf 'sessions=%s\nfirst_seen=%s\nlast_seen=%s\n' "$count" "$first" "$last"
+        ;;
+    tier)
+        count="$(wc -l < "$SESSIONS_FILE" 2>/dev/null | tr -d ' ' || printf '0')"
+        if [[ "$count" -le 1 ]]; then
+            printf 'introduction\n'
+        elif [[ "$count" -le 3 ]]; then
+            printf 'welcome_back\n'
+        elif [[ "$count" -le 10 ]]; then
+            printf 'regular\n'
+        else
+            printf 'inner_circle\n'
+        fi
+        ;;
+    *)
+        printf 'Usage: wb-profile {show | increment | tier}\n' >&2
+        exit 2
+        ;;
+esac

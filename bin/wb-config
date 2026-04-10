@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# wb-config — read/write worldbuilder config as simple key=value pairs.
+#
+# Usage:
+#   wb-config get KEY                → prints value (empty if unset)
+#   wb-config set KEY VALUE          → writes or updates key
+#   wb-config show                   → prints whole config
+
+set -euo pipefail
+
+CONFIG_FILE="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/config"
+mkdir -p "$(dirname "$CONFIG_FILE")"
+touch "$CONFIG_FILE"
+
+cmd="${1:-}"
+
+case "$cmd" in
+    get)
+        key="${2:?wb-config get KEY}"
+        grep -E "^${key}=" "$CONFIG_FILE" 2>/dev/null | tail -1 | sed "s/^${key}=//" || true
+        ;;
+    set)
+        key="${2:?wb-config set KEY VALUE}"
+        value="${3:?wb-config set KEY VALUE}"
+        if grep -qE "^${key}=" "$CONFIG_FILE" 2>/dev/null; then
+            tmp="$(mktemp)"
+            grep -vE "^${key}=" "$CONFIG_FILE" > "$tmp" || true
+            printf '%s=%s\n' "$key" "$value" >> "$tmp"
+            mv "$tmp" "$CONFIG_FILE"
+        else
+            printf '%s=%s\n' "$key" "$value" >> "$CONFIG_FILE"
+        fi
+        ;;
+    show)
+        cat "$CONFIG_FILE"
+        ;;
+    *)
+        printf 'Usage: wb-config {get KEY | set KEY VALUE | show}\n' >&2
+        exit 2
+        ;;
+esac

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# wb-slug — compute worldbuilder project slug from current working directory.
+# Prefers git repo root basename; falls back to cwd basename.
+# All other wb-* utilities use this to locate ~/.worldbuilder/projects/<slug>/.
+
+set -euo pipefail
+
+if root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    name="$(basename "$root")"
+else
+    name="$(basename "$PWD")"
+fi
+
+# Sanitize: lowercase, alphanumeric + hyphens only, collapse repeats, strip edges.
+slug="$(printf '%s' "$name" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^a-z0-9-]/-/g' \
+    | sed 's/--*/-/g' \
+    | sed 's/^-//;s/-$//')"
+
+# Empty slug falls back to "default".
+[[ -z "$slug" ]] && slug="default"
+
+printf '%s\n' "$slug"

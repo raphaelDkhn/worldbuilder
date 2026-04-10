@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# setup — install worldbuilder skills into Claude Code.
+#
+# What this does:
+#   1. Resolves the worldbuilder repo location (the directory containing this script).
+#   2. Symlinks the bin/ scripts into ~/.worldbuilder/bin/ so skills can reach them
+#      via $HOME/.worldbuilder/bin/wb-* regardless of repo location.
+#   3. Creates ~/.worldbuilder/ state directory structure.
+#   4. Symlinks each skill directory into ~/.claude/skills/ as a sibling of any other
+#      skill collections (e.g. gstack). Each symlink replicates the single SKILL.md.
+#   5. Writes the repo location to ~/.worldbuilder/config.
+#
+# What this does NOT do:
+#   - Modify your shell profile.
+#   - Modify PATH.
+#   - Install any Python, Node, or Rust dependencies.
+#   - Contact any remote server.
+#   - Modify settings.json or any Claude Code global config.
+
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WB_HOME="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}"
+CLAUDE_SKILLS="$HOME/.claude/skills"
+
+SKILLS=(
+    north-star
+    founder-fit
+    squiggle
+    idea-shotgun
+    adjacent-possible
+    kill-darlings
+    hypothesis
+    demo
+    memo
+    mom-test
+    conviction
+    talent-density
+    planting
+)
+
+BIN_SCRIPTS=(
+    wb-slug
+    wb-config
+    wb-squiggle-append
+    wb-squiggle-read
+    wb-napkin-math
+    wb-last-action
+    wb-conviction-trend
+    wb-profile
+    wb-session-update
+)
+
+printf 'worldbuilder setup\n'
+printf '==================\n'
+printf 'repo:          %s\n' "$REPO_DIR"
+printf 'state home:    %s\n' "$WB_HOME"
+printf 'claude skills: %s\n' "$CLAUDE_SKILLS"
+printf '\n'
+
+# ---- 1. Sanity checks ----------------------------------------------------
+
+if [ ! -f "$REPO_DIR/WORLDBUILDER.md" ]; then
+    printf 'ERROR: %s does not look like a worldbuilder repo (no WORLDBUILDER.md).\n' "$REPO_DIR" >&2
+    exit 1
+fi
+
+if [ ! -d "$REPO_DIR/bin" ]; then
+    printf 'ERROR: %s/bin does not exist.\n' "$REPO_DIR" >&2
+    exit 1
+fi
+
+# ---- 2. Create state directories -----------------------------------------
+
+mkdir -p "$WB_HOME/bin"
+mkdir -p "$WB_HOME/projects"
+touch "$WB_HOME/config"
+touch "$WB_HOME/builder-profile.sessions"
+
+# ---- 3. Symlink bin/ scripts ---------------------------------------------
+
+printf 'linking bin/ scripts into %s...\n' "$WB_HOME/bin"
+for script in "${BIN_SCRIPTS[@]}"; do
+    src="$REPO_DIR/bin/$script"
+    dst="$WB_HOME/bin/$script"
+    if [ ! -x "$src" ]; then
+        printf '  WARNING: %s not executable, attempting chmod\n' "$src"
+        chmod +x "$src" 2>/dev/null || true
+    fi
+    if [ -L "$dst" ] || [ -e "$dst" ]; then
+        rm -f "$dst"
+    fi
+    ln -s "$src" "$dst"
+    printf '  %s → %s\n' "$script" "$src"
+done
+
+# ---- 4. Write repo location to config ------------------------------------
+
+"$WB_HOME/bin/wb-config" set repo "$REPO_DIR"
+"$WB_HOME/bin/wb-config" set version "$(cat "$REPO_DIR/VERSION" 2>/dev/null || printf '0.1.0')"
+
+# ---- 5. Symlink skills into ~/.claude/skills/ ----------------------------
+
+mkdir -p "$CLAUDE_SKILLS"
+
+# Top-level /worldbuilder root skill (single SKILL.md at repo root)
+printf '\nlinking root /worldbuilder skill...\n'
+root_dst="$CLAUDE_SKILLS/worldbuilder"
+if [ -L "$root_dst" ] || [ -d "$root_dst" ]; then
+    if [ -L "$root_dst" ]; then
+        rm -f "$root_dst"
+    else
+        printf '  NOTE: %s already exists as a real directory. Backing up to %s.bak\n' "$root_dst" "$root_dst"
+        mv "$root_dst" "$root_dst.bak.$(date +%s)"
+    fi
+fi
+mkdir -p "$root_dst"
+ln -sf "$REPO_DIR/SKILL.md" "$root_dst/SKILL.md"
+printf '  %s → %s\n' "$root_dst/SKILL.md" "$REPO_DIR/SKILL.md"
+
+# Individual skills — each as its own top-level sibling
+printf '\nlinking individual skills...\n'
+for skill in "${SKILLS[@]}"; do
+    src="$REPO_DIR/$skill/SKILL.md"
+    dst_dir="$CLAUDE_SKILLS/$skill"
+    dst="$dst_dir/SKILL.md"
+    if [ ! -f "$src" ]; then
+        printf '  SKIP: %s (no SKILL.md in repo)\n' "$skill"
+        continue
+    fi
+    if [ -L "$dst_dir" ] || [ -d "$dst_dir" ]; then
+        if [ -L "$dst_dir" ]; then
+            rm -f "$dst_dir"
+        else
+            # Real directory — back it up rather than deleting (could be a gstack skill with the same name)
+            printf '  NOTE: %s already exists; backing up to %s.bak\n' "$dst_dir" "$dst_dir"
+            mv "$dst_dir" "$dst_dir.bak.$(date +%s)"
+        fi
+    fi
+    mkdir -p "$dst_dir"
+    ln -sf "$src" "$dst"
+    printf '  /%s → %s\n' "$skill" "$src"
+done
+
+# ---- 6. Summary ----------------------------------------------------------
+
+printf '\ndone.\n\n'
+printf 'next steps:\n'
+printf '  1. Open Claude Code in any project.\n'
+printf '  2. Type /worldbuilder to start, or describe your situation in plain English.\n'
+printf '  3. Read WORLDBUILDER.md for the ethos and anti-sycophancy rules.\n'
+printf '\nstate will accumulate in %s/projects/<slug>/\n' "$WB_HOME"
+printf 'to uninstall: rm -rf %s and remove the symlinks under %s\n' "$WB_HOME" "$CLAUDE_SKILLS"

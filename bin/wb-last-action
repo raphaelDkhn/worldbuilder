@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# wb-last-action — check days since the last external action in the squiggle journal.
+#
+# External actions are: demo-shipped, memo-sent, interview-completed, darling-killed.
+# Called in every skill's preamble to surface the research trap.
+#
+# Output (single line):
+#   OK N       — last action was N days ago, within the healthy window (≤3)
+#   WARN N     — last action was N days ago, creeping toward the trap (4-7)
+#   TRAP N     — last action was N days ago, you are in the research trap (>7)
+#   NEVER      — no external action has ever been logged
+#
+# Exit code is always 0 — this is a signal, not a gate.
+
+set -euo pipefail
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SLUG="$("$BIN_DIR/wb-slug")"
+FILE="${WORLDBUILDER_HOME:-$HOME/.worldbuilder}/projects/$SLUG/squiggle.jsonl"
+
+if [[ ! -f "$FILE" ]]; then
+    printf 'NEVER\n'
+    exit 0
+fi
+
+last_ts="$(grep -E '"type":"(demo-shipped|memo-sent|interview-completed|darling-killed)"' "$FILE" 2>/dev/null \
+    | grep -oE '"ts":"[^"]+"' \
+    | sed 's/"ts":"//;s/"$//' \
+    | sort \
+    | tail -1 || true)"
+
+if [[ -z "$last_ts" ]]; then
+    printf 'NEVER\n'
+    exit 0
+fi
+
+# Portable epoch-seconds conversion: try BSD date, then GNU date.
+if last_epoch="$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$last_ts" "+%s" 2>/dev/null)"; then
+    :
+elif last_epoch="$(date -u -d "$last_ts" "+%s" 2>/dev/null)"; then
+    :
+else
+    printf 'NEVER\n'
+    exit 0
+fi
+
+now_epoch="$(date -u "+%s")"
+days=$(( (now_epoch - last_epoch) / 86400 ))
+
+if [[ $days -le 3 ]]; then
+    printf 'OK %d\n' "$days"
+elif [[ $days -le 7 ]]; then
+    printf 'WARN %d\n' "$days"
+else
+    printf 'TRAP %d\n' "$days"
+fi
