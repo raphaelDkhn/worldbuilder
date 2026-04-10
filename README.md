@@ -12,7 +12,7 @@ Every skill pushes you toward the things -1 to 0 founders avoid: **shipping arti
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_GH/worldbuilder.git ~/worldbuilder
+git clone https://github.com/raphaelDkhn/worldbuilder.git ~/worldbuilder
 cd ~/worldbuilder && ./setup
 ```
 
