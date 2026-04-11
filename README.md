@@ -1,6 +1,6 @@
 # worldbuilder
 
-**Skills for finding its founder-market fit**
+**Skills for finding your founder-market fit**
 
 You are in the Squiggle. You've left (or want to leave) your job. You don't know what to build yet. You're reading, journaling, talking to friends, getting nowhere fast. The question isn't *"how do I ship this"* — it's *"what do I want to spend the next five to ten years of my life on?"*
 
