@@ -9,7 +9,7 @@ Inspired structurally by Garry Tan's [gstack](https://github.com/garrytan/gstack
 
 Every skill pushes you toward the things -1 to 0 founders avoid: **shipping artifacts into the world, talking to external humans, and killing your favorite ideas.**
 
-> *Disclaimer: I'm not part of South Park Commons and not an SPC member — just a builder who found the -1 to 0 thesis compelling enough to apply it to my own squiggle.*
+> *Disclaimer: I'm not part of South Park Commons — just a random builder who found the -1 to 0 thesis compelling enough to apply it to my own squiggle.*
 
 
 ## Install
